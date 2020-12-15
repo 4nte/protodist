@@ -1,14 +1,14 @@
 package distribute
 
 import (
-	"github.com/4nte/proto-git/git"
+	"github.com/4nte/protodist/git"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"time"
 
-	"github.com/4nte/proto-git/internal/target"
+	"github.com/4nte/protodist/internal/target"
 )
 
 // Distribute proto to files

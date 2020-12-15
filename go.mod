@@ -1,4 +1,4 @@
-module github.com/4nte/proto-git
+module github.com/4nte/protodist
 
 go 1.15
 

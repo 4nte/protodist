@@ -2,8 +2,8 @@ package target
 
 import (
 	"fmt"
-	"github.com/4nte/proto-git/git"
-	"github.com/4nte/proto-git/util"
+	"github.com/4nte/protodist/git"
+	"github.com/4nte/protodist/util"
 	"io/ioutil"
 	"log"
 	"os"

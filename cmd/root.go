@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/4nte/proto-git/git"
+	"github.com/4nte/protodist/git"
 	"os"
 	"strings"
 
-	"github.com/4nte/proto-git/internal/distribute"
+	"github.com/4nte/protodist/internal/distribute"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
