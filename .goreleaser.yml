@@ -38,9 +38,9 @@ dockers:
 
     # Templates of the Docker image names.
     image_templates:
-      - "antegulin/protodist:latest"
-      - "antegulin/protodist:{{ .Tag }}"
-      - "antegulin/protodist:v{{ .Major }}"
+      - "ghcr.io/4nte/protodist:latest"
+      - "ghcr.io/4nte/protodist:{{ .Tag }}"
+      - "ghcr.io/4nte/protodist:v{{ .Major }}"
 
     # Path to the Dockerfile (from the project root).
     dockerfile: Dockerfile
