@@ -26,7 +26,6 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: |
           echo "${DOCKER_PASSWORD}" | docker login ghcr.io --username "${DOCKER_USERNAME}" --password-stdin
-
       -
         name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
