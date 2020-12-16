@@ -13,8 +13,6 @@ import (
 
 // Distribute proto to files
 func Distribute(gitCfg git.Config, protoOutDir string) {
-	branch := gitCfg.Branch
-
 	cloneDir, err := ioutil.TempDir("tmp", "proto-git-clone-*")
 	if err != nil {
 		log.Fatal(err)
@@ -24,8 +22,16 @@ func Distribute(gitCfg git.Config, protoOutDir string) {
 	if err != nil {
 		panic(err)
 	}
-	target.Golang(protoOutDir, gitCfg, branch, cloneDir)
-	target.Javascript(protoOutDir, gitCfg, branch, cloneDir)
+
+	// master branch will be cloned by default
+	cloneBranch := "master"
+
+	// if ref is a branch, then the new branch will be created or checked out with the same branch name of the ref
+	if refType, refValue := gitCfg.ParseRef(); refType == "branch" {
+		cloneBranch = refValue
+	}
+	target.Golang(protoOutDir, gitCfg, cloneBranch, cloneDir)
+	target.Javascript(protoOutDir, gitCfg, cloneBranch, cloneDir)
 
 	<-time.After(5 * time.Second)
 }

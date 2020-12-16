@@ -19,12 +19,11 @@ const (
 )
 
 var (
-	gitBranch   string
-	gitTag      string
-	gitHost     string
-	gitOwner    string
-	protoOutDir string
-	verbose     bool
+	gitRef       string
+	gitHost      string
+	gitRepoOwner string
+	protoOutDir  string
+	verbose      bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -40,23 +39,21 @@ var rootCmd = &cobra.Command{
 		return initializeConfig(cmd)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		if gitOwner == "" {
-			panic("PROTODIST_GIT_OWNER must be set")
+		if gitRepoOwner == "" {
+			panic("PROTODIST_GIT_REPO_OWNER must be set")
 		}
 
 		if gitHost == "" {
 			panic("PROTODIST_GIT_HOST must be set")
 		}
 
-		if gitBranch == "" {
-			panic("PROTODIST_GIT_BRANCH must be set")
+		if gitRef == "" {
+			panic("PROTODIST_GIT_REPO_OWNER must be set")
 		}
 
-		gitCfg := git.Config{
-			Owner:  gitOwner,
-			Host:   gitHost,
-			Branch: gitBranch,
-			Tag:    gitTag,
+		gitCfg, err := git.NewConfig(gitRepoOwner, gitHost, gitRef)
+		if err != nil {
+			panic(err)
 		}
 
 		distribute.Distribute(gitCfg, protoOutDir)
@@ -80,10 +77,9 @@ func init() {
 	// will be global for your application.
 
 	// TODO: refactor to use git_ref instead and then infer if the ref is branch or tag
-	rootCmd.PersistentFlags().StringVar(&gitBranch, "git_branch", "", "git branch")
-	rootCmd.PersistentFlags().StringVar(&gitOwner, "git_owner", "", "git owner")
-	rootCmd.PersistentFlags().StringVar(&gitTag, "git_tag", "", "git tag")
-	rootCmd.PersistentFlags().StringVar(&gitHost, "git_host", "", "git tag")
+	rootCmd.PersistentFlags().StringVar(&gitRepoOwner, "git_repo_owner", "", "git repo owner")
+	rootCmd.PersistentFlags().StringVar(&gitRef, "git_ref", "", "git ref (e.g refs/heads/foo-branch, refs/tags/foo-tag)")
+	rootCmd.PersistentFlags().StringVar(&gitHost, "git_host", "", "git host")
 	rootCmd.PersistentFlags().StringVar(&protoOutDir, "proto_out_dir", "", "proto output directory")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "show verbose logs")
 

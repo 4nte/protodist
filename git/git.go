@@ -1,6 +1,7 @@
 package git
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,20 +11,49 @@ import (
 
 // Config
 type Config struct {
-	Owner  string
-	Host   string
-	Branch string
-	Tag    string
+	Owner string
+	Host  string
+	Ref   string
+}
+
+func NewConfig(repoOwner, host, ref string) (Config, error) {
+	// Check if ref type is correct
+	if !(strings.HasPrefix(ref, "refs/heads") || strings.HasPrefix(ref, "refs/tags")) {
+		return Config{}, errors.New("git ref should be in format of refs/heads/* or refs/tags/* ")
+	}
+
+	return Config{
+		Owner: repoOwner,
+		Host:  host,
+		Ref:   ref,
+	}, nil
+}
+
+type RefType string
+
+const BranchRef RefType = "branch"
+const tagRef RefType = "tag"
+
+func (c Config) ParseRef() (RefType, string) {
+	if strings.HasPrefix(c.Ref, "refs/heads/") {
+		return BranchRef, strings.TrimPrefix(c.Ref, "refs/heads/")
+	}
+
+	if strings.HasPrefix(c.Ref, "refs/tags/") {
+		return tagRef, strings.TrimPrefix(c.Ref, "refs/tags/")
+	}
+
+	panic(fmt.Sprintf("unable to parse ref: %s", c.Ref))
 }
 
 // Resolve repo URL from repo name
-func (g Config) GetRepoURL(repoName string) string {
+func (c Config) GetRepoURL(repoName string) string {
 	transport := "git@github.com"
-	return fmt.Sprintf("%s:%s", transport, path.Join(g.Owner, repoName))
+	return fmt.Sprintf("%s:%s", transport, path.Join(c.Owner, repoName))
 }
 
-func (g Config) GitBase() string {
-	return path.Join(g.Host, g.Owner)
+func (c Config) GitBase() string {
+	return path.Join(c.Host, c.Owner)
 }
 
 // Clone

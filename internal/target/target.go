@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 )
 
-func Golang(protoOutDir string, gitCfg git.Config, branch string, cloneDir string) {
+func Golang(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir string) {
 	var goPackages []string
 	// Scan compiled go packages
 	files, err := ioutil.ReadDir(path.Join(protoOutDir, "go", gitCfg.GitBase()))
@@ -30,7 +30,7 @@ func Golang(protoOutDir string, gitCfg git.Config, branch string, cloneDir strin
 	// Clone go proto repos
 	for _, pkg := range goPackages {
 		repoUrl := gitCfg.GetRepoURL(pkg)
-		git.Clone(repoUrl, branch)
+		git.Clone(repoUrl, cloneBranch)
 	}
 
 	// Delete all .go files in cloned go proto repos
@@ -69,19 +69,23 @@ func AddCommitTagPush(cfg git.Config, repos []string) {
 	for _, repo := range repos {
 		git.AddAll(repo)
 		git.Commit(repo, "add pb files")
-		if cfg.Tag != "" {
-			git.Tag(repo, cfg.Tag)
+
+		refType, refName := cfg.ParseRef()
+		if refType == git.BranchRef {
+			git.Push(repo, refName)
+
+		} else {
+			git.Tag(repo, refName)
 		}
-		git.Push(repo, cfg.Branch)
 	}
 }
 
-func Javascript(protoOutDir string, gitCfg git.Config, branch string, cloneDir string) {
+func Javascript(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir string) {
 	var tsPackages []string
 
 	repoName := "proto-all-js"
 	repoUrl := gitCfg.GetRepoURL(repoName)
-	git.Clone(repoUrl, branch)
+	git.Clone(repoUrl, cloneBranch)
 
 	packageDirs, err := ioutil.ReadDir(path.Join(protoOutDir, "ts"))
 	if err != nil {
