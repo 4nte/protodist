@@ -14,7 +14,7 @@ import (
 func Golang(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir string) {
 	var goPackages []string
 	// Scan compiled go packages
-	files, err := ioutil.ReadDir(path.Join(protoOutDir, "go", gitCfg.GitBase()))
+	files, err := ioutil.ReadDir(path.Join(protoOutDir, "go"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -29,13 +29,15 @@ func Golang(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir 
 
 	// Clone go proto repos
 	for _, pkg := range goPackages {
-		repoUrl := gitCfg.GetRepoURL(pkg)
+		repoName := fmt.Sprintf("proto-%s-go", pkg)
+		repoUrl := gitCfg.GetRepoURL(repoName)
 		git.Clone(repoUrl, cloneBranch)
 	}
 
 	// Delete all .go files in cloned go proto repos
 	for _, pkg := range goPackages {
-		repoDir := path.Join(cloneDir, pkg)
+		repoName := fmt.Sprintf("proto-%s-go", pkg)
+		repoDir := path.Join(cloneDir, repoName)
 		pkgCloneDir, err := ioutil.ReadDir(repoDir)
 		if err != nil {
 			panic(err)
@@ -54,7 +56,7 @@ func Golang(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir 
 		}
 
 		// Move generate .go files to cloned repo dir
-		generatedPkgDir := path.Join(protoOutDir, "go", gitCfg.Host, gitCfg.Owner, pkg)
+		generatedPkgDir := path.Join(protoOutDir, "go", pkg)
 		err = util.CopyDirectory(generatedPkgDir, repoDir)
 		if err != nil {
 			panic(err)
@@ -62,7 +64,11 @@ func Golang(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir 
 
 	}
 
-	AddCommitTagPush(gitCfg, goPackages)
+	var repoNames []string
+	for _, goPkg := range goPackages {
+		repoNames = append(repoNames, fmt.Sprintf("proto-%s-go", goPkg))
+	}
+	AddCommitTagPush(gitCfg, repoNames)
 }
 
 func AddCommitTagPush(cfg git.Config, repos []string) {

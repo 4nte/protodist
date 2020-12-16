@@ -13,11 +13,12 @@ import (
 
 // Distribute proto to files
 func Distribute(gitCfg git.Config, protoOutDir string) {
-	cloneDir, err := ioutil.TempDir("tmp", "proto-git-clone-*")
+	cloneDir, err := ioutil.TempDir(os.TempDir(), "proto-git-clone-*")
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Handle this differently - this is not good design
 	err = os.Setenv("TMPDIR", path.Join(cloneDir))
 	if err != nil {
 		panic(err)
