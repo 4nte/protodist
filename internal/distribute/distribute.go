@@ -24,6 +24,14 @@ func Distribute(gitCfg git.Config, protoOutDir string) {
 		panic(err)
 	}
 
+	err = os.Setenv("GIT_AUTHOR_NAME", "protodist")
+	if err != nil {
+		panic(err)
+	}
+	err = os.Setenv("GIT_AUTHOR_EMAIL", "email@example.com")
+	if err != nil {
+		panic(err)
+	}
 	// master branch will be cloned by default
 	cloneBranch := "master"
 
