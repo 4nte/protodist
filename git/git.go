@@ -14,9 +14,10 @@ type Config struct {
 	Owner string
 	Host  string
 	Ref   string
+	Token string
 }
 
-func NewConfig(repoOwner, host, ref string) (Config, error) {
+func NewConfig(repoOwner, host, ref, token string) (Config, error) {
 	// Check if ref type is correct
 	if !(strings.HasPrefix(ref, "refs/heads") || strings.HasPrefix(ref, "refs/tags")) {
 		return Config{}, errors.New("git ref should be in format of refs/heads/* or refs/tags/* ")
@@ -26,6 +27,7 @@ func NewConfig(repoOwner, host, ref string) (Config, error) {
 		Owner: repoOwner,
 		Host:  host,
 		Ref:   ref,
+		Token: token,
 	}, nil
 }
 
@@ -48,7 +50,11 @@ func (c Config) ParseRef() (RefType, string) {
 
 // Resolve repo URL from repo name
 func (c Config) GetRepoURL(repoName string) string {
-	transport := "git@github.com"
+	if len(c.Token) > 0 {
+		return fmt.Sprintf("https://%s:x-oauth-basic@%s/%s/%s.git", c.Token, c.Host, c.Owner, repoName)
+	}
+
+	transport := "git@" + c.Host
 	return fmt.Sprintf("%s:%s", transport, path.Join(c.Owner, repoName))
 }
 

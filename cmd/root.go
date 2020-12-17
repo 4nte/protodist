@@ -22,6 +22,7 @@ var (
 	gitRef       string
 	gitHost      string
 	gitRepoOwner string
+	gitToken     string
 	protoOutDir  string
 	verbose      bool
 )
@@ -50,7 +51,11 @@ var rootCmd = &cobra.Command{
 			panic("PROTODIST_GIT_REPO_OWNER must be set")
 		}
 
-		gitCfg, err := git.NewConfig(gitRepoOwner, gitHost, gitRef)
+		if gitToken == "" {
+			fmt.Println("warning: PROTODIST_GIT_TOKEN is not set, protodist can access only public repos now")
+		}
+
+		gitCfg, err := git.NewConfig(gitRepoOwner, gitHost, gitRef, gitToken)
 		if err != nil {
 			panic(err)
 		}
@@ -79,6 +84,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&gitRepoOwner, "git_repo_owner", "", "git repo owner")
 	rootCmd.PersistentFlags().StringVar(&gitRef, "git_ref", "", "git ref (e.g refs/heads/foo-branch, refs/tags/foo-tag)")
 	rootCmd.PersistentFlags().StringVar(&gitHost, "git_host", "", "git host")
+	rootCmd.PersistentFlags().StringVar(&gitToken, "git_token", "", "git token")
 	rootCmd.PersistentFlags().StringVar(&protoOutDir, "proto_out_dir", "", "proto output directory")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "show verbose logs")
 
