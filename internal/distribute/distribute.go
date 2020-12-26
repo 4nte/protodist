@@ -2,13 +2,11 @@ package distribute
 
 import (
 	"github.com/4nte/protodist/git"
+	"github.com/4nte/protodist/internal/target"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
-	"time"
-
-	"github.com/4nte/protodist/internal/target"
 )
 
 // Distribute proto to files
@@ -41,6 +39,5 @@ func Distribute(gitCfg git.Config, protoOutDir string) {
 	}
 	target.Golang(protoOutDir, gitCfg, cloneBranch, cloneDir)
 	target.Javascript(protoOutDir, gitCfg, cloneBranch, cloneDir)
-
-	<-time.After(5 * time.Second)
+	target.C(protoOutDir, gitCfg, cloneBranch, cloneDir)
 }
