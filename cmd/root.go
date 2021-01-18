@@ -25,6 +25,7 @@ var (
 	gitToken     string
 	protoOutDir  string
 	verbose      bool
+	dryRun       bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -48,7 +49,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		if gitRef == "" {
-			panic("PROTODIST_GIT_REPO_OWNER must be set")
+			panic("PROTODIST_GIT_REF must be set")
 		}
 
 		if gitToken == "" {
@@ -60,7 +61,7 @@ var rootCmd = &cobra.Command{
 			panic(err)
 		}
 
-		distribute.Distribute(gitCfg, protoOutDir)
+		distribute.Distribute(gitCfg, protoOutDir, dryRun)
 	},
 }
 
@@ -87,6 +88,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&gitToken, "git_token", "", "git token")
 	rootCmd.PersistentFlags().StringVar(&protoOutDir, "proto_out_dir", "", "proto output directory")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "show verbose logs")
+	rootCmd.PersistentFlags().BoolVarP(&dryRun, "dry_run", "d", false, "don't git push")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
