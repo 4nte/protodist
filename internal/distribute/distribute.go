@@ -1,6 +1,7 @@
 package distribute
 
 import (
+	"fmt"
 	"github.com/4nte/protodist/git"
 	"github.com/4nte/protodist/internal/target"
 	"io/ioutil"
@@ -10,7 +11,11 @@ import (
 )
 
 // Distribute proto to files
-func Distribute(gitCfg git.Config, protoOutDir string) {
+func Distribute(gitCfg git.Config, protoOutDir string, dryRun bool) {
+	if dryRun {
+		fmt.Println("Dry run. Changes won't be pushed to GIT.")
+	}
+
 	cloneDir, err := ioutil.TempDir(os.TempDir(), "proto-git-clone-*")
 	if err != nil {
 		log.Fatal(err)
@@ -37,7 +42,7 @@ func Distribute(gitCfg git.Config, protoOutDir string) {
 	if refType, refValue := gitCfg.ParseRef(); refType == "branch" {
 		cloneBranch = refValue
 	}
-	target.Golang(protoOutDir, gitCfg, cloneBranch, cloneDir)
-	target.Javascript(protoOutDir, gitCfg, cloneBranch, cloneDir)
-	target.C(protoOutDir, gitCfg, cloneBranch, cloneDir)
+	target.Golang(protoOutDir, gitCfg, cloneBranch, cloneDir, dryRun)
+	target.Javascript(protoOutDir, gitCfg, cloneBranch, cloneDir, dryRun)
+	target.C(protoOutDir, gitCfg, cloneBranch, cloneDir, dryRun)
 }

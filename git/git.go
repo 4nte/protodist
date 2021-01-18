@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // Config
@@ -31,10 +33,24 @@ func NewConfig(repoOwner, host, ref, token string) (Config, error) {
 	}, nil
 }
 
+type CommitInfo struct {
+	Timestamp time.Time
+	Hash      string
+}
+
+func (c CommitInfo) ModulePseudoVersion() string {
+	//layoutGit := "20060102150405" +
+
+	gitTimestamp := fmt.Sprintf("%d%02d%02d%02d%02d%02d", c.Timestamp.Year(), c.Timestamp.Month(), c.Timestamp.Day(), c.Timestamp.Hour(), c.Timestamp.Minute(), c.Timestamp.Second())
+
+	fmt.Println("timestamp", c.Timestamp.String())
+	return fmt.Sprintf("v0.0.0-%s-%s", gitTimestamp, c.Hash)
+}
+
 type RefType string
 
 const BranchRef RefType = "branch"
-const tagRef RefType = "tag"
+const TagRef RefType = "tag"
 
 func (c Config) ParseRef() (RefType, string) {
 	if strings.HasPrefix(c.Ref, "refs/heads/") {
@@ -42,7 +58,7 @@ func (c Config) ParseRef() (RefType, string) {
 	}
 
 	if strings.HasPrefix(c.Ref, "refs/tags/") {
-		return tagRef, strings.TrimPrefix(c.Ref, "refs/tags/")
+		return TagRef, strings.TrimPrefix(c.Ref, "refs/tags/")
 	}
 
 	panic(fmt.Sprintf("unable to parse ref: %s", c.Ref))
@@ -76,8 +92,25 @@ func Clone(repoUrl, branch string) {
 		panic(fmt.Errorf("failed to clone: %s: %s", repoUrl, err))
 	}
 
-	// Checkout
-	cmd = exec.Command("git", "checkout", "-b", branch)
+	cmd = exec.Command("git", "branch", "--show-current")
+	cmd.Dir = path.Join(os.TempDir(), repoName)
+	gitBranchOutput, err := cmd.Output()
+	if err != nil {
+		panic(fmt.Errorf("failed to get current repo branch: %s: %s", repoUrl, err))
+
+	}
+
+	// Remove newline from branch name
+	currentBranch := strings.ReplaceAll(string(gitBranchOutput), "\n", "")
+
+	fmt.Println("current branch", string(currentBranch), branch)
+	// Don't checkout if branch is already checked out.
+	if string(currentBranch) == branch {
+		return
+	}
+
+	// Checkout the expected branch
+	cmd = exec.Command("git", "switch", "-c", branch)
 	cmd.Dir = path.Join(os.TempDir(), repoName)
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -92,7 +125,7 @@ func AddAll(repoName string) {
 		panic(fmt.Errorf("failed to stat repo dir: %s: %s", repoDir, err))
 	}
 
-	cmd := exec.Command("git", "add", "*")
+	cmd := exec.Command("git", "add", ".")
 	cmd.Dir = repoDir
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -110,7 +143,7 @@ func Tag(repoName string, tag string) {
 	}
 }
 
-func Commit(repoName string, message string) {
+func Commit(repoName string, message string) CommitInfo {
 	repoDir := path.Join(os.TempDir(), repoName)
 	_, err := os.Stat(repoDir)
 	if err != nil {
@@ -120,8 +153,31 @@ func Commit(repoName string, message string) {
 	cmd := exec.Command("git", "commit", "-m", message)
 	cmd.Dir = repoDir
 	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
 		panic(fmt.Errorf("failed to commit: %s: %s", repoName, err))
+	}
+
+	cmd = exec.Command("git", "log", "-1", `--format="%at-%h"`, `--abbrev=12`)
+	cmd.Dir = repoDir
+	cmd.Stderr = os.Stderr
+	//if err := cmd.Run(); err != nil {
+	//	panic(fmt.Errorf("failed to get last git info: %s: %s", repoName, err))
+	//}
+	out, err := cmd.Output()
+	if err != nil {
+		panic(err)
+	}
+	commitLog := strings.ReplaceAll(string(out), ":", "")
+	commitLog = strings.ReplaceAll(commitLog, `"`, "")
+	commitData := strings.Split(commitLog, "-")
+	unix, err := strconv.ParseInt(commitData[0], 10, 64)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse unix timestamp from git log: %s", err))
+	}
+	return CommitInfo{
+		Timestamp: time.Unix(unix, 0).UTC(),
+		Hash:      commitData[1],
 	}
 }
 
