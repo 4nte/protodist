@@ -92,24 +92,12 @@ func Clone(repoUrl, branch string) {
 		panic(fmt.Errorf("failed to clone: %s: %s", repoUrl, err))
 	}
 
-	cmd = exec.Command("git", "branch", "--show-current")
-	cmd.Dir = path.Join(os.TempDir(), repoName)
-	gitBranchOutput, err := cmd.Output()
-	if err != nil {
-		panic(fmt.Errorf("failed to get current repo branch: %s: %s", repoUrl, err))
-
-	}
-
-	// Remove newline from branch name
-	currentBranch := strings.ReplaceAll(string(gitBranchOutput), "\n", "")
-
-	fmt.Println("current branch", string(currentBranch), branch)
-	// Don't checkout if branch is already checked out.
-	if string(currentBranch) == branch {
+	// If target branch is master, we can skip git switch.
+	if branch == "master" {
 		return
 	}
 
-	// Checkout the expected branch
+	// Switch to non-master branch
 	cmd = exec.Command("git", "switch", "-c", branch)
 	cmd.Dir = path.Join(os.TempDir(), repoName)
 	cmd.Stderr = os.Stderr
