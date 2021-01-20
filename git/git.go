@@ -98,7 +98,7 @@ func Clone(repoUrl, branch string) {
 	}
 
 	// Switch to non-master branch
-	cmd = exec.Command("git", "switch", "-c", branch)
+	cmd = exec.Command("git", "checkout", "-B", branch)
 	cmd.Dir = path.Join(os.TempDir(), repoName)
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
