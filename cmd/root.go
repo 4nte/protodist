@@ -24,6 +24,8 @@ var (
 	gitRepoOwner string
 	gitToken     string
 	protoOutDir  string
+	deploy       string
+	deployDir    string
 	verbose      bool
 	dryRun       bool
 )
@@ -40,20 +42,29 @@ var rootCmd = &cobra.Command{
 		return initializeConfig(cmd)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		if gitRepoOwner == "" {
-			panic("PROTODIST_GIT_REPO_OWNER must be set")
-		}
+		if deploy == "git" {
+			if gitRepoOwner == "" {
+				panic("PROTODIST_GIT_REPO_OWNER must be set")
+			}
 
-		if gitHost == "" {
-			panic("PROTODIST_GIT_HOST must be set")
-		}
+			if gitHost == "" {
+				panic("PROTODIST_GIT_HOST must be set")
+			}
 
-		if gitRef == "" {
-			panic("PROTODIST_GIT_REF must be set")
-		}
+			if gitRef == "" {
+				panic("PROTODIST_GIT_REF must be set")
+			}
 
-		if gitToken == "" {
-			fmt.Println("warning: PROTODIST_GIT_TOKEN is not set, protodist can access only public repos now")
+			if gitToken == "" {
+				fmt.Println("warning: PROTODIST_GIT_TOKEN is not set, protodist can access only public repos now")
+			}
+		} else if deploy == "local" {
+			if deployDir == "" {
+				panic("PROTODIST_DEPLOY_DIR must be set when deploy strategy is 'local'")
+			}
+			gitRepoOwner = "spotsie"
+			gitHost = "github.com"
+			gitRef = "refs/heads/local"
 		}
 
 		gitCfg, err := git.NewConfig(gitRepoOwner, gitHost, gitRef, gitToken)
@@ -61,7 +72,7 @@ var rootCmd = &cobra.Command{
 			panic(err)
 		}
 
-		distribute.Distribute(gitCfg, protoOutDir, dryRun)
+		distribute.Distribute(gitCfg, protoOutDir, dryRun, deploy, deployDir)
 	},
 }
 
@@ -87,6 +98,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&gitHost, "git_host", "", "git host")
 	rootCmd.PersistentFlags().StringVar(&gitToken, "git_token", "", "git token")
 	rootCmd.PersistentFlags().StringVar(&protoOutDir, "proto_out_dir", "", "proto output directory")
+	rootCmd.PersistentFlags().StringVar(&deploy, "deploy", "git", "deploy to: git or local")
+	rootCmd.PersistentFlags().StringVar(&deployDir, "deploy_dir", "", "local deploy directory")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "show verbose logs")
 	rootCmd.PersistentFlags().BoolVarP(&dryRun, "dry_run", "d", false, "don't git push")
 
