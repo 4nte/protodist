@@ -10,7 +10,7 @@ import (
 	"path"
 )
 
-func Javascript(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir string, dryRun bool) {
+func Javascript(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir string, dryRun bool, deployTarget string, deployDir string) {
 	var tsPackages []string
 
 	repoName := "proto-all-js"

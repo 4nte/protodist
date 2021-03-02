@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/4nte/protodist/git"
 	"github.com/4nte/protodist/util"
+	"github.com/pkg/errors"
 	"go/parser"
 	"go/token"
 	"golang.org/x/tools/go/packages"
@@ -22,10 +23,16 @@ module {{ .ModulePath }}
 
 go {{ .GoVersion }}
 
+{{ range .RequiredPackages -}}
+{{ if .LocalPath }}
+replace {{ .Path }} => {{ .LocalPath }}
+{{ end }}
+{{- end -}}
+
 require (
-	{{ range .RequiredPackages }}
+	{{ range .RequiredPackages -}}
 	{{ .Path }} {{ .Version }}
-	{{ end }}
+	{{ end -}}
 )
 `
 
@@ -51,14 +58,15 @@ func isStandardPackage(pkg string) bool {
 
 // Go Module
 type Module struct {
-	Path    string
-	Version string
+	Path      string
+	Version   string
+	LocalPath string
 }
 
 var knownPackages = []Module{
 	{Path: "github.com/golang/protobuf", Version: "v1.4.3"},
-	{Path: "google.golang.org/grpc", Version: "v1.35.0"},
 	{Path: "google.golang.org/protobuf", Version: "v1.25.0"},
+	{Path: "google.golang.org/grpc", Version: "v1.35.0"},
 }
 
 func parseImports(filename string) []string {
@@ -83,6 +91,7 @@ type DependencyResolver struct {
 		Version                 *string
 		RequiredProtoFamilyDeps []string
 		RequiredThirdPartyDeps  []Module
+		LocalPath               string
 	}
 
 	// Implement `git commit` for module
@@ -96,15 +105,17 @@ func NewDependencyResolver(ResolverFunc ModuleResolverFunc) DependencyResolver {
 			Version                 *string
 			RequiredProtoFamilyDeps []string
 			RequiredThirdPartyDeps  []Module
+			LocalPath               string
 		}),
 	}
 }
-func (r DependencyResolver) AddModule(module string, requiredDeps []string, requiredThirdPartyDeps []Module) {
+func (r DependencyResolver) AddModule(module string, localPath string, requiredDeps []string, requiredThirdPartyDeps []Module) {
 	r.modules[module] = &struct {
 		Version                 *string
 		RequiredProtoFamilyDeps []string
 		RequiredThirdPartyDeps  []Module
-	}{Version: nil, RequiredProtoFamilyDeps: requiredDeps, RequiredThirdPartyDeps: requiredThirdPartyDeps}
+		LocalPath               string
+	}{Version: nil, LocalPath: localPath, RequiredProtoFamilyDeps: requiredDeps, RequiredThirdPartyDeps: requiredThirdPartyDeps}
 }
 
 func (r DependencyResolver) resolveModule(module string, version string) {
@@ -136,8 +147,9 @@ func (r DependencyResolver) Resolve() {
 			for _, dep := range module.RequiredProtoFamilyDeps {
 				depModule := r.modules[dep]
 				requiredDeps = append(requiredDeps, Module{
-					Path:    dep,
-					Version: *depModule.Version,
+					Path:      dep,
+					Version:   *depModule.Version,
+					LocalPath: depModule.LocalPath,
 				})
 			}
 			// Add third party deps
@@ -155,7 +167,7 @@ func (r DependencyResolver) Resolve() {
 		}
 	}
 }
-func Golang(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir string, dryRun bool) {
+func Golang(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir string, dryRun bool, deployTarget string, deployDir string) {
 	var protoModules []string // Currently compiled proto modules
 	loadStandardPackages()
 	var goPackages []string
@@ -184,8 +196,16 @@ func Golang(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir 
 	// Clone go proto repos
 	for _, pkg := range goPackages {
 		repoName := fmt.Sprintf("proto-%s-go", pkg)
-		repoUrl := gitCfg.GetRepoURL(repoName)
-		git.Clone(repoUrl, cloneBranch)
+		if deployTarget == "git" {
+			repoUrl := gitCfg.GetRepoURL(repoName)
+			git.Clone(repoUrl, cloneBranch)
+		} else if deployTarget == "local" {
+			err := os.Mkdir(path.Join(os.TempDir(), repoName), 0755)
+			if err != nil {
+				panic(errors.Wrap(err, "failed to create a dir"))
+			}
+		}
+
 	}
 
 	depResolver := NewDependencyResolver(func(modulePath string, requiredPackages []Module) string {
@@ -225,24 +245,41 @@ func Golang(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir 
 			log.Fatal(err)
 		}
 
-		git.AddAll(repoName)
-		commit := git.Commit(repoName, "add pb files")
-		refType, refName := gitCfg.ParseRef()
-		if refType == git.TagRef {
-			// Create a git tag
-			git.Tag(repoName, refName)
-		}
-		if !dryRun {
-			// Skip git push
-			git.Push(repoName, refName)
-		}
-
 		var moduleVersion string
-		switch refType {
-		case git.BranchRef:
-			moduleVersion = commit.ModulePseudoVersion()
-		case git.TagRef:
-			moduleVersion = refName
+
+		if deployTarget == "git" {
+			git.AddAll(repoName)
+			commit := git.Commit(repoName, "add pb files")
+			refType, refName := gitCfg.ParseRef()
+			if refType == git.TagRef {
+				// Create a git tag
+				git.Tag(repoName, refName)
+			}
+			if !dryRun {
+				git.Push(repoName, refName)
+			}
+
+			switch refType {
+			case git.BranchRef:
+				moduleVersion = commit.ModulePseudoVersion()
+			case git.TagRef:
+				moduleVersion = refName
+			}
+		} else if deployTarget == "local" {
+			repoDir := path.Join(os.TempDir(), repoName)
+			// Create module dir
+			moduleDir := fmt.Sprintf("%s/%s", deployDir, repoName)
+			err := os.Mkdir(moduleDir, 0755)
+			if err != nil {
+				panic(err)
+			}
+			// Copy contents into module dir
+			err = util.CopyDirectory(repoDir, moduleDir)
+			if err != nil {
+				panic(errors.Wrap(err, "failed to copy repo dir to deploy dir "))
+			}
+
+			moduleVersion = "v0.0.0-local"
 		}
 
 		return moduleVersion
@@ -292,14 +329,13 @@ func Golang(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir 
 			for _, importedPkg1 := range imports {
 				// Ignore packages from standard library
 				if isStandardPackage(importedPkg1) {
-					//fmt.Println("its standard pkg", importedPkg1)
-					break
+					continue
 				}
 				var isFound bool
 				for _, importedPkg2 := range importedPackages {
 					if importedPkg1 == importedPkg2 {
 						isFound = true
-						break
+						continue
 					}
 				}
 				if !isFound {
@@ -343,7 +379,6 @@ func Golang(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir 
 				// Check if import is a known package
 				if strings.HasPrefix(importedPkg, knownPkg.Path) {
 					isFound = true
-
 					// Check if pkg was already added to requiredThirdPartyPackages
 					var isAlreadyAdded bool
 					for _, addedPkg := range requiredThirdPartyPackages {
@@ -375,7 +410,11 @@ func Golang(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir 
 			panic(fmt.Sprintf("failed to resolve %d packages\n", len(unknownPackages)))
 		}
 
-		depResolver.AddModule(modulePath, requiredProtoPackages, requiredThirdPartyPackages)
+		var localPath string
+		if deployTarget == "local" {
+			localPath = path.Join(deployDir, repoName)
+		}
+		depResolver.AddModule(modulePath, localPath, requiredProtoPackages, requiredThirdPartyPackages)
 	}
 
 	// Resolve all deps

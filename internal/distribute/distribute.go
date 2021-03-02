@@ -11,7 +11,7 @@ import (
 )
 
 // Distribute proto to files
-func Distribute(gitCfg git.Config, protoOutDir string, dryRun bool) {
+func Distribute(gitCfg git.Config, protoOutDir string, dryRun bool, deployTarget string, deployDir string) {
 	if dryRun {
 		fmt.Println("Dry run. Changes won't be pushed to GIT.")
 	}
@@ -39,10 +39,18 @@ func Distribute(gitCfg git.Config, protoOutDir string, dryRun bool) {
 	cloneBranch := "master"
 
 	// if ref is a branch, then the new branch will be created or checked out with the same branch name of the ref
-	if refType, refValue := gitCfg.ParseRef(); refType == "branch" {
-		cloneBranch = refValue
+	if deployTarget == "git" {
+		if refType, refValue := gitCfg.ParseRef(); refType == "branch" {
+			cloneBranch = refValue
+		}
 	}
-	target.Golang(protoOutDir, gitCfg, cloneBranch, cloneDir, dryRun)
-	target.Javascript(protoOutDir, gitCfg, cloneBranch, cloneDir, dryRun)
-	target.C(protoOutDir, gitCfg, cloneBranch, cloneDir, dryRun)
+
+	if deployTarget == "local" {
+		target.Golang(protoOutDir, gitCfg, cloneBranch, cloneDir, dryRun, deployTarget, deployDir)
+	} else {
+		target.Golang(protoOutDir, gitCfg, cloneBranch, cloneDir, dryRun, deployTarget, deployDir)
+		target.Javascript(protoOutDir, gitCfg, cloneBranch, cloneDir, dryRun, deployTarget, deployDir)
+		target.C(protoOutDir, gitCfg, cloneBranch, cloneDir, dryRun, deployTarget, deployDir)
+	}
+
 }
