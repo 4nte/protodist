@@ -62,6 +62,7 @@ var rootCmd = &cobra.Command{
 			if deployDir == "" {
 				panic("PROTODIST_DEPLOY_DIR must be set when deploy strategy is 'local'")
 			}
+			// TODO: This shouldn't be hardcoded
 			gitRepoOwner = "spotsie"
 			gitHost = "github.com"
 			gitRef = "refs/heads/local"
