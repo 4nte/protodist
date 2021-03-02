@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 )
 
-func C(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir string, dryRun bool) {
+func C(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir string, dryRun bool, deployTarget string, deployDir string) {
 	filterPackages := []string{"gateway"}
 	var scannedPackages []string
 
