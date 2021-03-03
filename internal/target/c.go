@@ -12,7 +12,7 @@ import (
 )
 
 func C(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir string, dryRun bool, deployTarget string, deployDir string) {
-	filterPackages := []string{"gateway"}
+	filterPackages := []string{"gateway", "device"}
 	var scannedPackages []string
 
 	// Scan compiled go packages
