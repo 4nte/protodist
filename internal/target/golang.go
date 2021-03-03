@@ -412,7 +412,7 @@ func Golang(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir 
 
 		var localPath string
 		if deployTarget == "local" {
-			localPath = path.Join(deployDir, repoName)
+			localPath = path.Join("../", repoName)
 		}
 		depResolver.AddModule(modulePath, localPath, requiredProtoPackages, requiredThirdPartyPackages)
 	}
