@@ -57,7 +57,13 @@ func C(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir strin
 
 		// Search for files with .go extension && delete them
 		for _, file := range pkgCloneDir {
-			if !file.Mode().IsRegular() || filepath.Ext(file.Name()) != ".c" || filepath.Ext(file.Name()) != ".h" {
+
+			// Filter directories
+			if file.IsDir() && file.Name() != pkg {
+				continue
+			}
+			// skip deleting files which are not .c or .h
+			if filepath.Ext(file.Name()) != ".c" && filepath.Ext(file.Name()) != ".h" {
 				continue
 			}
 			// Delete file
@@ -68,10 +74,39 @@ func C(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir strin
 		}
 
 		// Move generate .c files to cloned repo dir
-		generatedPkgDir := path.Join(protoOutDir, "c", pkg)
-		err = util.CopyDirectory(generatedPkgDir, repoDir)
+		generatedPkgDirPath := path.Join(protoOutDir, "c", pkg)
+		err = util.CopyDirectory(generatedPkgDirPath, repoDir)
 		if err != nil {
 			panic(err)
+		}
+
+		// nanopb imports fix
+		// generated C files expect header files to reside in `package/foo.pb.h` path, but they are all in the same directory
+		// Here we are creating a sub-directory with the name of a proto package, and moving the header files into it.
+		headerDirPath := path.Join(generatedPkgDirPath, pkg)
+		err = util.CreateIfNotExists(headerDirPath, 0755)
+		if err != nil {
+			panic(err)
+		}
+
+		generatedPkgDir, err := ioutil.ReadDir(generatedPkgDirPath)
+		if err != nil {
+			panic(err)
+		}
+		for _, file := range generatedPkgDir {
+			if filepath.Ext(file.Name()) == ".h" {
+				originalFile := path.Join(generatedPkgDirPath, file.Name())
+				err = util.Copy(path.Join(originalFile), path.Join(headerDirPath, file.Name()))
+				if err != nil {
+					panic(err)
+				}
+
+				// Delete the original file
+				err := os.Remove(originalFile)
+				if err != nil {
+					panic(err)
+				}
+			}
 		}
 
 	}

@@ -22,10 +22,12 @@ func Javascript(protoOutDir string, gitCfg git.Config, cloneBranch string, clone
 		log.Fatal(err)
 	}
 	for _, pkgDir := range packageDirs {
-		if !pkgDir.IsDir() {
-			panic("file is not expected to be here, only directories")
+		if pkgDir.IsDir() {
+			tsPackages = append(tsPackages, pkgDir.Name())
+		} else {
+			// Log this, don't panic
+			//panic("file is not expected to be here, only directories")
 		}
-		tsPackages = append(tsPackages, pkgDir.Name())
 	}
 
 	// Copy generated pb files to repo dirs
