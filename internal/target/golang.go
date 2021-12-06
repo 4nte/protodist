@@ -300,7 +300,7 @@ func Golang(protoOutDir string, gitCfg git.Config, cloneBranch string, cloneDir 
 				continue
 			}
 			// Delete .go file
-			err := os.Remove(file.Name())
+			err := os.Remove(path.Join(repoDir, file.Name()))
 			if err != nil {
 				panic(err)
 			}
