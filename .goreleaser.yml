@@ -32,10 +32,6 @@ dockers:
     goarch: amd64
     goarm: ''
 
-    # Name templates of the built binaries that should be used.
-    binaries:
-      - protodist
-
     # Templates of the Docker image names.
     image_templates:
       - "ghcr.io/4nte/protodist:latest"
