@@ -2,21 +2,27 @@ package distribute
 
 import (
 	"fmt"
-	"github.com/4nte/protodist/git"
-	"github.com/4nte/protodist/internal/target"
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path"
+
+	"github.com/4nte/protodist/git"
+	"github.com/4nte/protodist/util"
 )
 
-// Distribute proto to files
-func Distribute(gitCfg git.Config, protoOutDir string, dryRun bool, deployTarget string, deployDir string) {
-	if dryRun {
-		fmt.Println("Dry run. Changes won't be pushed to GIT.")
+func DoWork(gitCfg git.Config, dryRun bool) {
+	cloneDir, err := ioutil.TempDir(os.TempDir(), "proto-repos")
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	cloneDir, err := ioutil.TempDir(os.TempDir(), "proto-git-clone-*")
+	if dryRun {
+		log.Println("Dry run. Changes won't be pushed to GIT.")
+	}
+
+	cloneDir, err = ioutil.TempDir(os.TempDir(), "proto-git-clone-*")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -35,22 +41,57 @@ func Distribute(gitCfg git.Config, protoOutDir string, dryRun bool, deployTarget
 	if err != nil {
 		panic(err)
 	}
-	// master branch will be cloned by default
-	cloneBranch := "master"
 
 	// if ref is a branch, then the new branch will be created or checked out with the same branch name of the ref
-	if deployTarget == "git" {
-		if refType, refValue := gitCfg.ParseRef(); refType == "branch" {
-			cloneBranch = refValue
+	cloneBranch := "main"
+	if refType, refValue := gitCfg.ParseRef(); refType == "branch" {
+		cloneBranch = refValue
+	}
+
+	// For every target
+	// 1. clone git repo
+	// 2. delete all files (except .git)
+	// 3. copy file contents from build/<target> to repo dir
+	targets := []string{"go", "js"}
+	for _, target := range targets {
+		log.Printf("processing target: %s", target)
+		targetRepoName := fmt.Sprintf("proto-%s", target)
+		repoDirPath := path.Join(cloneDir, targetRepoName)
+		repoUrl := gitCfg.GetRepoURL(targetRepoName)
+		git.Clone(repoUrl, cloneBranch)
+
+		// Cleanup all files in repo, except .git
+		cmd := exec.Command("rm", "-rf", "*") // rm will not delete the .git file
+		cmd.Dir = repoDirPath
+		if err := cmd.Run(); err != nil {
+			log.Fatalf("failed to remove files from repo at path: %s", repoDirPath)
+		}
+
+		// Copy build dir to repo dir
+		if err := util.CopyDirectory(path.Join("build", target), repoDirPath); err != nil {
+			log.Fatalf("failed to copy template files: %s", err)
 		}
 	}
 
-	if deployTarget == "local" {
-		target.Golang(protoOutDir, gitCfg, cloneBranch, cloneDir, dryRun, deployTarget, deployDir)
-	} else {
-		target.Golang(protoOutDir, gitCfg, cloneBranch, cloneDir, dryRun, deployTarget, deployDir)
-		target.Javascript(protoOutDir, gitCfg, cloneBranch, cloneDir, dryRun, deployTarget, deployDir)
-		target.C(protoOutDir, gitCfg, cloneBranch, cloneDir, dryRun, deployTarget, deployDir)
+	// For every target
+	// 1. git add .
+	// 2. git commit
+	// 3. git tag (if set)
+	// 4. git push
+
+	for _, target := range targets {
+		targetRepoName := fmt.Sprintf("proto-%s", target)
+		git.AddAll(targetRepoName)
+		commit := git.Commit(targetRepoName, "add pb files")
+		log.Printf("commit created: %s", commit.Hash)
+		refType, refName := gitCfg.ParseRef()
+		if refType == git.TagRef {
+			// Create a git tag
+			git.Tag(targetRepoName, refName)
+		}
+		if !dryRun {
+			git.Push(targetRepoName, refName)
+		}
 	}
 
 }
