@@ -139,22 +139,21 @@ func Commit(repoName string, message string) (CommitInfo, bool) {
 		panic(fmt.Errorf("failed to stat repo dir: %s: %s", repoDir, err))
 	}
 
-	cmd := exec.Command("test", "-z", "\"$(git status --porcelain)\"")
-	cmd.Dir = repoDir
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	if err := cmd.Run(); err == nil {
-		log.Println("there is nothing to commit, working tree must be clean")
-		return CommitInfo{}, false
-	}
+	// cmd := exec.Command("test", "-z", "\"$(git status --porcelain)\"")
+	// cmd.Dir = repoDir
+	// cmd.Stderr = os.Stderr
+	// cmd.Stdout = os.Stdout
+	// if err := cmd.Run(); err == nil {
+	// 	log.Println("there is nothing to commit, working tree must be clean")
+	// 	return CommitInfo{}, false
+	// }
 
-	cmd = exec.Command("git", "commit", "-m", message)
+	cmd := exec.Command("git", "commit", "-m", message)
 	cmd.Dir = repoDir
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
-
-		panic(fmt.Errorf("failed to git commit: %s: %s", repoName, err))
+		log.Printf("failed to git commit: %s: %s", repoName, err)
 	}
 
 	cmd = exec.Command("git", "log", "-1", `--format="%at-%h"`, `--abbrev=12`)
