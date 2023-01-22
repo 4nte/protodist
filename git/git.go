@@ -143,11 +143,11 @@ func Commit(repoName string, message string) (CommitInfo, bool) {
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
-		if strings.Contains(err.Error(), "nothing to commit, working tree clean") {
+		if strings.Contains(err.Error(), "nothing to commit") {
 			return CommitInfo{}, false
 		}
 
-		panic(fmt.Errorf("failed to commit: %s: %s", repoName, err))
+		panic(fmt.Errorf("failed to git commit: %s: %s", repoName, err))
 	}
 
 	cmd = exec.Command("git", "log", "-1", `--format="%at-%h"`, `--abbrev=12`)
