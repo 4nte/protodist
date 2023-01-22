@@ -82,8 +82,12 @@ func DoWork(gitCfg git.Config, dryRun bool) {
 	for _, target := range targets {
 		targetRepoName := fmt.Sprintf("proto-%s", target)
 		git.AddAll(targetRepoName)
-		commit := git.Commit(targetRepoName, "add pb files")
-		log.Printf("commit created: %s", commit.Hash)
+		if commit, ok := git.Commit(targetRepoName, "add pb files"); ok {
+			log.Printf("commit created: %s", commit.Hash)
+		} else {
+			log.Printf("no commit has been create, there is nothing to commit.")
+		}
+
 		refType, refName := gitCfg.ParseRef()
 		if refType == git.TagRef {
 			// Create a git tag

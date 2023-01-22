@@ -131,7 +131,7 @@ func Tag(repoName string, tag string) {
 	}
 }
 
-func Commit(repoName string, message string) CommitInfo {
+func Commit(repoName string, message string) (CommitInfo, bool) {
 	repoDir := path.Join(os.TempDir(), repoName)
 	_, err := os.Stat(repoDir)
 	if err != nil {
@@ -143,6 +143,10 @@ func Commit(repoName string, message string) CommitInfo {
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
+		if strings.Contains(err.Error(), "nothing to commit, working tree clean") {
+			return CommitInfo{}, false
+		}
+
 		panic(fmt.Errorf("failed to commit: %s: %s", repoName, err))
 	}
 
@@ -166,7 +170,7 @@ func Commit(repoName string, message string) CommitInfo {
 	return CommitInfo{
 		Timestamp: time.Unix(unix, 0).UTC(),
 		Hash:      commitData[1],
-	}
+	}, true
 }
 
 func Push(repoName string, branch string) {
