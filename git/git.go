@@ -92,12 +92,12 @@ func Clone(repoUrl, branch string) {
 		panic(fmt.Errorf("failed to clone: %s: %s", repoUrl, err))
 	}
 
-	// If target branch is master, we can skip git switch.
-	if branch == "master" {
+	// If target branch is main, we can skip git switch.
+	if branch == "main" {
 		return
 	}
 
-	// Switch to non-master branch
+	// Switch to non-main branch
 	cmd = exec.Command("git", "checkout", "-B", branch)
 	cmd.Dir = path.Join(os.TempDir(), repoName)
 	cmd.Stderr = os.Stderr
