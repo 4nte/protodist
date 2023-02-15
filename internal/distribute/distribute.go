@@ -12,6 +12,26 @@ import (
 	"github.com/4nte/protodist/util"
 )
 
+// getTargets scans all template dirs contained in `target-templates/` and returns a list of their names
+func getTargets() []string {
+	var targets []string
+
+	entries, err := ioutil.ReadDir("target-templates")
+	if err != nil {
+		log.Fatalf("failed to read 'target-templates' dir: %s", err)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		targets = append(targets, entry.Name())
+	}
+
+	return targets
+}
+
 func DoWork(gitCfg git.Config, dryRun bool) {
 	cloneDir, err := ioutil.TempDir(os.TempDir(), "proto-repos")
 	if err != nil {
@@ -52,7 +72,7 @@ func DoWork(gitCfg git.Config, dryRun bool) {
 	// 1. clone git repo
 	// 2. delete all files (except .git)
 	// 3. copy file contents from build/<target> to repo dir
-	targets := []string{"go", "js"}
+	targets := getTargets()
 	for _, target := range targets {
 		log.Printf("processing target: %s", target)
 		targetRepoName := fmt.Sprintf("proto-%s", target)
@@ -78,7 +98,6 @@ func DoWork(gitCfg git.Config, dryRun bool) {
 	// 2. git commit
 	// 3. git tag (if set)
 	// 4. git push
-
 	for _, target := range targets {
 		targetRepoName := fmt.Sprintf("proto-%s", target)
 		git.AddAll(targetRepoName)
@@ -97,5 +116,4 @@ func DoWork(gitCfg git.Config, dryRun bool) {
 			git.Push(targetRepoName, refName)
 		}
 	}
-
 }
